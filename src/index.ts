@@ -28,11 +28,13 @@ export const useMouseMatrixTransform = (props: Props = {}) => {
   const [internalTransform, setInternalTransform] = useState<Matrix>(
     props.initialTransform ?? identity(),
   )
+  const currentTransformRef = useRef(props.transform ?? internalTransform)
   const [waitCounter, setWaitCounter] = useState(0)
   const [extChangeCounter, incExtChangeCounter] = useReducer((s) => s + 1, 0)
 
   const setTransform = useCallback(
     (newTransform: Matrix) => {
+      currentTransformRef.current = newTransform
       if (props.onSetTransform) {
         props.onSetTransform(newTransform)
       }
@@ -52,6 +54,10 @@ export const useMouseMatrixTransform = (props: Props = {}) => {
   )
 
   const transform = props.transform ?? internalTransform
+
+  useEffect(() => {
+    currentTransformRef.current = transform
+  }, [transform])
 
   const cancelDrag = useCallback(() => {
     setLastDragCancelTime(Date.now())
@@ -84,7 +90,7 @@ export const useMouseMatrixTransform = (props: Props = {}) => {
       }, 100)
       return () => clearTimeout(timeout)
     }
-    let init_tf = props.transform ?? internalTransform
+    let init_tf = currentTransformRef.current
 
     let m0: Point = { x: 0, y: 0 },
       m1: Point = { x: 0, y: 0 },
@@ -101,6 +107,7 @@ export const useMouseMatrixTransform = (props: Props = {}) => {
     function handleMouseDown(e: MouseEvent) {
       if (props.enabled === false) return
       if (props.shouldDrag && !props.shouldDrag(e)) return
+      init_tf = currentTransformRef.current
       m0 = getMousePos(e)
       if (Date.now() - lastDragCancelTime < 100) return
       md = true
@@ -128,6 +135,7 @@ export const useMouseMatrixTransform = (props: Props = {}) => {
     function handleMouseWheel(e: WheelEvent) {
       if (props.enabled === false) return
       if (props.shouldDrag && !props.shouldDrag(e)) return
+      init_tf = currentTransformRef.current
       const center = getMousePos(e)
       const new_tf = compose(
         translate(center.x, center.y),
